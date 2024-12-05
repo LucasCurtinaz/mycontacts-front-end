@@ -16,10 +16,13 @@ export default function useEditContact() {
   const safeAsyncAction = useSafeAsyncAction();
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function loadContact() {
       try {
         const contact = await ContactsService.getContactById(
           id,
+          controller.signal,
         );
 
         safeAsyncAction(() => {
@@ -27,18 +30,24 @@ export default function useEditContact() {
           setIsLoading(false);
           setContactName(contact.name);
         });
-      } catch {
-        safeAsyncAction(() => {
-          history.push('/');
-          toast({
-            type: 'danger',
-            text: 'Contato não encontrado!',
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          safeAsyncAction(() => {
+            history.push('/');
+            toast({
+              type: 'danger',
+              text: 'Contato não encontrado!',
+            });
           });
-        });
+        }
       }
     }
 
     loadContact();
+
+    return () => {
+      controller.abort();
+    };
   }, [id, history, safeAsyncAction]);
 
   async function handleSubmit(contact) {
